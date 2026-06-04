@@ -58,10 +58,18 @@
            sec:authorize="hasRole('ADMIN')">+ 상품 등록</a>
     </div>
 
+    <form th:action="@{/products}" method="get" class="mb-3 d-flex gap-2">
+        <input type="text" name="keyword" class="form-control"
+               placeholder="상품명으로 검색"
+               th:value="${keyword}"/>
+        <button type="submit" class="btn btn-primary px-4">검색</button>
+        <a th:href="@{/products}" class="btn btn-outline-secondary">초기화</a>
+    </form>
+
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div th:if="${productPage.isEmpty()}" class="text-center py-5 text-muted">
-                <p class="mb-0">등록된 상품이 없습니다.</p>
+                <p class="mb-0" th:text="${keyword != null ? '검색 결과가 없습니다.' : '등록된 상품이 없습니다.'}"></p>
             </div>
             <div th:unless="${productPage.isEmpty()}" class="table-responsive">
                 <table class="table table-hover mb-0 align-middle">
@@ -116,14 +124,18 @@
             </li>
             <li class="page-item" th:unless="${!productPage.hasPrevious()}">
                 <a class="page-link"
-                   th:href="@{/products(page=${productPage.number - 1}, size=${productPage.size})}">이전</a>
+                   th:href="${keyword != null}
+                       ? @{/products(page=${productPage.number - 1}, size=${productPage.size}, keyword=${keyword})}
+                       : @{/products(page=${productPage.number - 1}, size=${productPage.size})}">이전</a>
             </li>
 
             <li th:each="i : ${#numbers.sequence(0, productPage.totalPages - 1)}"
                 class="page-item"
                 th:classappend="${i == productPage.number} ? 'active'">
                 <a class="page-link"
-                   th:href="@{/products(page=${i}, size=${productPage.size})}"
+                   th:href="${keyword != null}
+                       ? @{/products(page=${i}, size=${productPage.size}, keyword=${keyword})}
+                       : @{/products(page=${i}, size=${productPage.size})}"
                    th:text="${i + 1}"></a>
             </li>
 
@@ -132,7 +144,9 @@
             </li>
             <li class="page-item" th:unless="${!productPage.hasNext()}">
                 <a class="page-link"
-                   th:href="@{/products(page=${productPage.number + 1}, size=${productPage.size})}">다음</a>
+                   th:href="${keyword != null}
+                       ? @{/products(page=${productPage.number + 1}, size=${productPage.size}, keyword=${keyword})}
+                       : @{/products(page=${productPage.number + 1}, size=${productPage.size})}">다음</a>
             </li>
         </ul>
     </nav>

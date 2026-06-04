@@ -19,7 +19,9 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -67,6 +69,46 @@ class ProductControllerTest {
             .andExpect(status().isOk())
             .andExpect(view().name("products/list"))
             .andExpect(model().attributeExists("productPage"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("인증된 사용자 - 상품명 검색 조회 성공 (200)")
+    void searchProducts_authenticated_returns200() throws Exception {
+        given(productService.searchProducts(eq("삼성전자"), any())).willReturn(
+            new PageImpl<>(
+                List.of(new Product("삼성전자 갤럭시 S25", 1290000, "최신 플래그십 스마트폰", 100)),
+                PageRequest.of(0, 5),
+                1
+            )
+        );
+
+        mockMvc.perform(get("/products")
+                .param("keyword", "삼성전자")
+                .param("page", "0")
+                .param("size", "5"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/list"))
+            .andExpect(model().attributeExists("productPage"))
+            .andExpect(model().attribute("keyword", "삼성전자"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("인증된 사용자 - 상품명 검색 결과 없음 화면 표시")
+    void searchProducts_noResults_showsEmptyMessage() throws Exception {
+        given(productService.searchProducts(eq("없는상품"), any())).willReturn(
+            new PageImpl<>(List.of(), PageRequest.of(0, 5), 0)
+        );
+
+        mockMvc.perform(get("/products")
+                .param("keyword", "없는상품")
+                .param("page", "0")
+                .param("size", "5"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/list"))
+            .andExpect(model().attribute("keyword", "없는상품"))
+            .andExpect(content().string(containsString("검색 결과가 없습니다.")));
     }
 
     @Test

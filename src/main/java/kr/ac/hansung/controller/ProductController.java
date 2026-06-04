@@ -1,8 +1,10 @@
 package kr.ac.hansung.controller;
 
 import kr.ac.hansung.dto.ProductDto;
+import kr.ac.hansung.entity.Product;
 import kr.ac.hansung.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
@@ -17,11 +19,18 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping
-    public String list(@RequestParam(defaultValue = "0") int page,
+    public String list(@RequestParam(required = false) String keyword,
+                       @RequestParam(defaultValue = "0") int page,
                        @RequestParam(defaultValue = "5") int size,
                        Model model) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by("id"));
-        model.addAttribute("productPage", productService.getProducts(pageRequest));
+        String normalizedKeyword = (keyword != null && !keyword.isBlank()) ? keyword : null;
+        Page<Product> productPage = normalizedKeyword != null
+            ? productService.searchProducts(normalizedKeyword, pageRequest)
+            : productService.getProducts(pageRequest);
+
+        model.addAttribute("productPage", productPage);
+        model.addAttribute("keyword", normalizedKeyword);
         return "products/list";
     }
 
