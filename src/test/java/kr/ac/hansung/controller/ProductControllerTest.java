@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.*;
+import static org.mockito.Mockito.never;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -165,6 +166,77 @@ class ProductControllerTest {
                 .param("name", "테스트 상품")
                 .param("price", "15000")
                 .param("stock", "10"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN - 상품 수정 폼 조회 성공 (200)")
+    void editProductForm_admin_returns200() throws Exception {
+        Product product = new Product("Spring Boot 4 교재", 35000, "실습서", 50);
+        product.setId(1L);
+        given(productService.findById(1L)).willReturn(product);
+
+        mockMvc.perform(get("/products/1/edit"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/edit"))
+            .andExpect(model().attributeExists("productDto"))
+            .andExpect(model().attribute("productId", 1L));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("일반 USER - 상품 수정 폼 접근 시 403 (권한 없음)")
+    void editProductForm_user_returns403() throws Exception {
+        mockMvc.perform(get("/products/1/edit"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN - 상품 수정 POST 후 목록으로 리다이렉트")
+    void editProduct_admin_redirectsToList() throws Exception {
+        given(productService.updateProduct(eq(1L), any())).willReturn(
+            new Product("수정 상품", 18000, "수정 설명", 12)
+        );
+
+        mockMvc.perform(post("/products/1/edit")
+                .with(csrf())
+                .param("name", "수정 상품")
+                .param("price", "18000")
+                .param("description", "수정 설명")
+                .param("stock", "12"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/products"))
+            .andExpect(flash().attribute("successMessage", "상품이 수정되었습니다."));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN - 상품 수정 검증 실패 시 수정 폼 유지")
+    void editProduct_validationError_returnsEditForm() throws Exception {
+        mockMvc.perform(post("/products/1/edit")
+                .with(csrf())
+                .param("name", "")
+                .param("price", "18000")
+                .param("description", "수정 설명")
+                .param("stock", "12"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("products/edit"))
+            .andExpect(model().attribute("productId", 1L));
+
+        then(productService).should(never()).updateProduct(eq(1L), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("일반 USER - 상품 수정 POST 시 403 (권한 없음)")
+    void editProduct_user_returns403() throws Exception {
+        mockMvc.perform(post("/products/1/edit")
+                .with(csrf())
+                .param("name", "수정 상품")
+                .param("price", "18000")
+                .param("stock", "12"))
             .andExpect(status().isForbidden());
     }
 
