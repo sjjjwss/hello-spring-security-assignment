@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<footer th:fragment="practiceFooter" class="practice-footer">
+    <style>
+        .practice-footer {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-top: 1px solid #dee2e6;
+            background: rgba(255, 255, 255, .94);
+            color: #495057;
+            text-align: center;
+            font-size: .875rem;
+        }
+        .practice-footer p {
+            margin-bottom: 0;
+        }
+    </style>
+    <p>
+        실습 수행 일시:
+        <span data-practice-clock
+              th:text="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd HH:mm:ss')}"></span>
+        &nbsp;│&nbsp; 학번: 2091213
+        &nbsp;│&nbsp; 성명: 김정민
+    </p>
+    <script>
+        (() => {
+            const clock = document.querySelector('[data-practice-clock]');
+            if (!clock) return;
+
+            const pad = value => String(value).padStart(2, '0');
+            const formatKoreanDateTime = date => {
+                const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+                const hours = date.getHours();
+                const period = hours < 12 ? '오전' : '오후';
+                const hour12 = hours % 12 || 12;
+
+                return `${date.getFullYear()}년 ${pad(date.getMonth() + 1)}월 ${pad(date.getDate())}일 ` +
+                    `(${weekdays[date.getDay()]}) ${period} ${pad(hour12)}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            };
+
+            const updateClock = () => {
+                clock.textContent = formatKoreanDateTime(new Date());
+            };
+
+            updateClock();
+            setInterval(updateClock, 1000);
+        })();
+    </script>
+</footer>
+</body>
+</html>

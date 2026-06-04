@@ -13,7 +13,7 @@
         .form-control:focus { border-color: #e94560; box-shadow: 0 0 0 0.2rem rgba(233,69,96,.25); }
     </style>
 </head>
-<body class="d-flex align-items-center justify-content-center">
+<body class="d-flex flex-column align-items-center justify-content-center">
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-sm-8 col-md-6 col-lg-4">
@@ -52,5 +52,6 @@
         </div>
     </div>
 </div>
+<div th:replace="~{fragments/practice-footer :: practiceFooter}"></div>
 </body>
 </html>
