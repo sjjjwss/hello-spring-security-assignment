@@ -7,13 +7,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.*;
+import static org.mockito.Mockito.never;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -96,5 +100,75 @@ class AuthControllerTest {
                 .param("email", "test@hansung.ac.kr")
                 .param("password", "password123"))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@hansung.ac.kr", roles = {"ADMIN", "USER"})
+    @DisplayName("GET /user/password - 로그인 사용자 비밀번호 변경 폼 정상 응답")
+    void passwordForm_authenticated_returns200() throws Exception {
+        mockMvc.perform(get("/user/password"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("user/password"))
+            .andExpect(model().attributeExists("passwordChangeDto"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("GET /user/password - 비로그인 사용자는 로그인 페이지로 리다이렉트")
+    void passwordForm_anonymous_redirectsToLogin() throws Exception {
+        mockMvc.perform(get("/user/password"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/login"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@hansung.ac.kr", roles = {"ADMIN", "USER"})
+    @DisplayName("POST /user/password - 비밀번호 변경 성공 후 홈으로 리다이렉트")
+    void changePassword_success_redirectsToHome() throws Exception {
+        willDoNothing().given(userService)
+            .changePassword("admin@hansung.ac.kr", "admin1234", "newpass123");
+
+        mockMvc.perform(post("/user/password")
+                .with(csrf())
+                .param("currentPassword", "admin1234")
+                .param("newPassword", "newpass123")
+                .param("confirmPassword", "newpass123"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/home"))
+            .andExpect(flash().attribute("successMessage", "비밀번호가 변경되었습니다"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@hansung.ac.kr", roles = {"ADMIN", "USER"})
+    @DisplayName("POST /user/password - 새 비밀번호 확인 불일치 시 폼 유지")
+    void changePassword_confirmMismatch_returnsPasswordForm() throws Exception {
+        mockMvc.perform(post("/user/password")
+                .with(csrf())
+                .param("currentPassword", "admin1234")
+                .param("newPassword", "newpass123")
+                .param("confirmPassword", "different123"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("user/password"))
+            .andExpect(content().string(containsString("새 비밀번호가 일치하지 않습니다")));
+
+        then(userService).should(never()).changePassword(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@hansung.ac.kr", roles = {"ADMIN", "USER"})
+    @DisplayName("POST /user/password - 현재 비밀번호 불일치 시 오류 표시")
+    void changePassword_wrongCurrentPassword_returnsPasswordForm() throws Exception {
+        willThrow(new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다"))
+            .given(userService)
+            .changePassword("admin@hansung.ac.kr", "wrongpass", "newpass123");
+
+        mockMvc.perform(post("/user/password")
+                .with(csrf())
+                .param("currentPassword", "wrongpass")
+                .param("newPassword", "newpass123")
+                .param("confirmPassword", "newpass123"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("user/password"))
+            .andExpect(content().string(containsString("현재 비밀번호가 일치하지 않습니다")));
     }
 }
